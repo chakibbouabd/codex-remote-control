@@ -11,6 +11,14 @@
       "import": "./dist/index.js"
     }
   },
+  "keywords": ["codex", "remote-control", "ai-agent", "e2ee", "json-rpc", "websocket"],
+  "license": "MIT",
+  "author": "Chakib Bouabd",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chakib-b/codex-remote-control",
+    "directory": "packages/shared"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

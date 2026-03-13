@@ -14,6 +14,14 @@
       "import": "./dist/index.js"
     }
   },
+  "keywords": ["codex", "remote-control", "ai-agent", "bridge", "git", "cli", "e2ee"],
+  "license": "MIT",
+  "author": "Chakib Bouabd",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chakib-b/codex-remote-control",
+    "directory": "packages/bridge"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
