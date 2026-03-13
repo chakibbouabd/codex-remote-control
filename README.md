@@ -152,14 +152,14 @@ pnpm test
 
 Use three terminals.
 
-1. Build the workspace once:
+1. Install dependencies and build once:
 
 ```bash
 pnpm install
 pnpm build
 ```
 
-2. Start the relay server:
+2. Start the relay server on your Mac:
 
 ```bash
 pnpm --filter @crc/relay start
@@ -167,38 +167,78 @@ pnpm --filter @crc/relay start
 
 This listens on `0.0.0.0:3773` by default.
 
-3. Start the bridge against your local relay:
+3. Find your Mac's LAN IP address:
 
 ```bash
-CRC_RELAY=ws://127.0.0.1:3773 pnpm --filter @crc/bridge exec node dist/cli/index.js start /absolute/path/to/workspace
+ipconfig getifaddr en0
+```
+
+If you are on Wi-Fi, this is usually the address your phone needs. It will look
+like `192.168.x.x`.
+
+4. Start the bridge with a relay URL your phone can reach:
+
+```bash
+CRC_RELAY=ws://YOUR_MAC_LAN_IP:3773 pnpm --filter @crc/bridge exec node dist/cli/index.js start /absolute/path/to/workspace
 ```
 
 If you are already inside the repo you want to control, `.` is enough:
 
 ```bash
-CRC_RELAY=ws://127.0.0.1:3773 pnpm --filter @crc/bridge exec node dist/cli/index.js start .
+CRC_RELAY=ws://YOUR_MAC_LAN_IP:3773 pnpm --filter @crc/bridge exec node dist/cli/index.js start .
 ```
 
-The bridge prints a session code and QR payload, but see the limitation below
-about the current Codex CLI transport mismatch.
+Example:
 
-4. Start the Expo mobile app:
+```bash
+CRC_RELAY=ws://192.168.1.221:3773 pnpm --filter @crc/bridge exec node dist/cli/index.js start .
+```
+
+Important:
+
+- do not use `ws://127.0.0.1:3773` when pairing with a physical iPhone or Android phone
+- `127.0.0.1` on the phone points to the phone itself, not your Mac
+- the bridge QR code embeds the relay URL, so restart the bridge after changing `CRC_RELAY`
+
+5. Start the Expo mobile app:
 
 ```bash
 pnpm --filter @crc/mobile start
 ```
 
-Then open it with one of:
+6. Open the app on your phone:
+
+For Android:
+
+- install Expo Go from the Play Store
+- scan the Expo QR code shown by Metro
+- once the app opens, scan the bridge QR code from inside CRC
+
+For iPhone:
+
+- install Expo Go from the App Store
+- open the Camera app or Expo Go to open the Metro QR code
+- once the app opens, scan the bridge QR code from inside CRC
+
+Requirements for physical phones:
+
+- your Mac and phone must be on the same Wi-Fi / LAN
+- the relay port `3773` must not be blocked by the macOS firewall
+- if the app restored an old session automatically, disconnect it from Settings before scanning a new bridge QR code
+
+Fallback path:
+
+- if camera scanning is inconvenient, paste the full QR payload JSON into the QR screen instead
+
+### Full Local Flow For Physical iOS/Android Phones
 
 ```bash
-pnpm --filter @crc/mobile ios
-pnpm --filter @crc/mobile android
+pnpm install
+pnpm build
+pnpm --filter @crc/relay start
+CRC_RELAY=ws://YOUR_MAC_LAN_IP:3773 pnpm --filter @crc/bridge exec node dist/cli/index.js start .
+pnpm --filter @crc/mobile start
 ```
-
-For local testing today:
-
-- scan the pairing QR code directly from the bridge terminal in the mobile app
-- or paste the full QR payload JSON into the QR screen when testing without the camera
 
 ### Known Local Limitations
 
@@ -209,8 +249,8 @@ For local testing today:
   pairing on its own; use the QR scanner or the full QR payload instead.
 - Expo web now starts locally once the web runtime packages are installed:
   `react-dom` and `react-native-web`.
-- The bridge defaults to the hosted relay unless you set `CRC_RELAY`, so use the
-  local `ws://127.0.0.1:3773` override when testing locally.
+- The bridge defaults to the hosted relay unless you set `CRC_RELAY`. For
+  physical phones, use your Mac's LAN IP, not `127.0.0.1`.
 
 ### Scripts
 
@@ -232,7 +272,7 @@ For local testing today:
 | Mobile | Expo SDK 54 + Expo Router + React Native |
 | State | Zustand |
 | Storage | expo-sqlite + expo-secure-store |
-| Crypto | Node.js crypto (bridge) + WebCrypto (mobile) |
+| Crypto | Node.js crypto (bridge) + pure-JS crypto on mobile seeded by expo-crypto |
 | Agent | Adapter pattern (AgentAdapter interface) |
 | Testing | Vitest |
 
