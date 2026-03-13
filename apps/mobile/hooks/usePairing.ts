@@ -3,7 +3,7 @@
  * @returns An object with pairWithQR and pairManually functions.
  */
 import { useCallback } from "react";
-import { generateClientKeyPair, deriveSharedSecret, deriveAESKeys } from "@/lib/crypto-client";
+import { generateClientKeyPair } from "@/lib/crypto-client";
 import { useSessionStore } from "@/stores/session";
 
 export function usePairing() {
@@ -22,8 +22,8 @@ export function usePairing() {
       throw new Error("QR code has expired");
     }
 
-    // Generate our identity keys
-    const keys = generateClientKeyPair();
+    // Generate our identity keys (async — uses WebCrypto API)
+    const keys = await generateClientKeyPair();
 
     // Send pair.confirm message to relay
     // (this will be done via the WebSocket connection)

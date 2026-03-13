@@ -1,13 +1,15 @@
 /**
- * Mobile-side E2EE using shared crypto utilities.
+ * Mobile-side E2EE using WebCrypto API.
  *
- * In React Native, we use expo-crypto for random bytes and the
- * WebCrypto API for AES-256-GCM. The shared package's Node.js crypto
+ * In React Native, we use the WebCrypto API (backed by expo-crypto)
+ * for all cryptographic operations. The shared package's Node.js crypto
  * functions are not available on mobile, so we implement mobile-specific
  * versions here.
+ *
+ * Key format: DER-encoded (PKCS8 for private, SPKI for public), matching
+ * the format used by the bridge's Node.js crypto implementation so both
+ * sides can interoperate.
  */
-
-import { generateIdentityKeys, serializeKeyPair, deserializeKeyPair } from "@crc/shared";
 
 export interface ClientKeyPair {
   ed25519PublicKey: string;
@@ -17,18 +19,35 @@ export interface ClientKeyPair {
 }
 
 /**
- * Generate identity keypairs for E2EE pairing.
- * On mobile, this uses expo-crypto's random number generator.
+ * Generate identity keypairs for E2EE pairing using WebCrypto API.
+ * On mobile, this uses the platform's native crypto implementation.
+ *
+ * Ed25519 for identity verification, X25519 for key exchange.
+ * Keys are exported in DER format to match the bridge's Node.js format.
  */
-export function generateClientKeyPair(): ClientKeyPair {
-  const keys = generateIdentityKeys();
-  const ed25519 = serializeKeyPair(keys.ed25519);
-  const x25519 = serializeKeyPair(keys.x25519);
+export async function generateClientKeyPair(): Promise<ClientKeyPair> {
+  const ed25519 = await crypto.subtle.generateKey(
+    { name: "Ed25519" },
+    true,
+    ["sign", "verify"],
+  );
+
+  const x25519 = await crypto.subtle.generateKey(
+    { name: "X25519" },
+    true,
+    ["deriveBits"],
+  );
+
+  const ed25519Public = await crypto.subtle.exportKey("spki", ed25519.publicKey);
+  const ed25519Private = await crypto.subtle.exportKey("pkcs8", ed25519.privateKey);
+  const x25519Public = await crypto.subtle.exportKey("spki", x25519.publicKey);
+  const x25519Private = await crypto.subtle.exportKey("pkcs8", x25519.privateKey);
+
   return {
-    ed25519PublicKey: ed25519.publicKey,
-    ed25519PrivateKey: ed25519.privateKey,
-    x25519PublicKey: x25519.publicKey,
-    x25519PrivateKey: x25519.privateKey,
+    ed25519PublicKey: toBase64(ed25519Public),
+    ed25519PrivateKey: toBase64(ed25519Private),
+    x25519PublicKey: toBase64(x25519Public),
+    x25519PrivateKey: toBase64(x25519Private),
   };
 }
 
@@ -157,4 +176,11 @@ export async function deriveAESKeys(
     bridgeToClient: bits.slice(0, 32),
     clientToBridge: bits.slice(32, 64),
   };
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────
+
+function toBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  return btoa(String.fromCharCode(...bytes));
 }
