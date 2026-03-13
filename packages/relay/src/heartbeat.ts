@@ -46,7 +46,7 @@ export class HeartbeatMonitor {
       const elapsed = now - session.lastActivityAt;
       const maxIdle = this.config.heartbeatIntervalMs * this.config.heartbeatMaxMisses;
 
-      if (elapsed > maxIdle && elapsed > this.config.sessionTimeoutMs) {
+      if (elapsed > maxIdle || elapsed > this.config.sessionTimeoutMs) {
         this.registry.closeSession(session.sessionId);
       }
     }
