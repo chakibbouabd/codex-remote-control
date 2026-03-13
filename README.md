@@ -208,8 +208,8 @@ For local testing today:
 - The full encrypted mobile handshake is still incomplete:
   `apps/mobile/hooks/usePairing.ts` stores the pairing/session data locally, but
   does not yet send the `pair.confirm` message over the relay WebSocket.
-- Expo web is not currently ready in this repo. `expo start --web` fails because
-  `react-native-web` is not installed.
+- Expo web now starts locally once the web runtime packages are installed:
+  `react-dom` and `react-native-web`.
 - The bridge defaults to the hosted relay unless you set `CRC_RELAY`, so use the
   local `ws://127.0.0.1:3773` override when testing locally.
 
