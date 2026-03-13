@@ -197,17 +197,16 @@ pnpm --filter @crc/mobile android
 
 For local testing today:
 
-- use the manual connect screen with the relay URL and 6-character session code
-- or paste the QR payload JSON into the QR screen
+- scan the pairing QR code directly from the bridge terminal in the mobile app
+- or paste the full QR payload JSON into the QR screen when testing without the camera
 
 ### Known Local Limitations
 
 - The relay server and bridge now start correctly from this repo for local use.
-- The mobile app now supports manual connect and pasted QR payloads for local
-  pairing state, but camera-based QR scanning is still not wired.
-- The full encrypted mobile handshake is still incomplete:
-  `apps/mobile/hooks/usePairing.ts` stores the pairing/session data locally, but
-  does not yet send the `pair.confirm` message over the relay WebSocket.
+- The mobile app now supports camera-based QR scanning, full `pair.confirm`
+  relay handshakes, and restoring the saved session on app launch.
+- The manual connect screen still does not provide enough data for secure
+  pairing on its own; use the QR scanner or the full QR payload instead.
 - Expo web now starts locally once the web runtime packages are installed:
   `react-dom` and `react-native-web`.
 - The bridge defaults to the hosted relay unless you set `CRC_RELAY`, so use the
@@ -230,7 +229,7 @@ For local testing today:
 | Monorepo | pnpm workspaces + Turborepo |
 | Bridge & Relay | TypeScript (strict, ESM) |
 | Build | tsup (esbuild) |
-| Mobile | Expo SDK 55 + Expo Router + React Native |
+| Mobile | Expo SDK 54 + Expo Router + React Native |
 | State | Zustand |
 | Storage | expo-sqlite + expo-secure-store |
 | Crypto | Node.js crypto (bridge) + WebCrypto (mobile) |

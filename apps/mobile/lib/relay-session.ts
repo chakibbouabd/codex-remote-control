@@ -1,3 +1,4 @@
+import * as SecureStore from "expo-secure-store";
 import type {
   EncryptedPayload,
   ErrorPayload,
@@ -35,6 +36,8 @@ type PairReadyPayload = {
   role?: string;
   sessionId?: string;
 };
+
+const ACTIVE_SESSION_KEY = "crc_active_session";
 
 class RelaySessionManager {
   private client: SecureWebSocketClient | null = null;
@@ -83,6 +86,7 @@ class RelaySessionManager {
     });
 
     useSessionStore.getState().setStatus("connected");
+    await persistSnapshot(snapshot);
 
     return snapshot;
   }
@@ -99,7 +103,27 @@ class RelaySessionManager {
     await this.waitForConnected();
   }
 
-  disconnect(options: { clearSnapshot?: boolean } = {}): void {
+  async restorePersistedSession(): Promise<ActiveRelaySession | null> {
+    const snapshot = await loadSnapshot();
+    if (!snapshot) {
+      return null;
+    }
+
+    this.snapshot = snapshot;
+
+    try {
+      await this.reconnect(snapshot);
+    } catch {
+      const store = useSessionStore.getState();
+      store.setPaired(snapshot.relayUrl, snapshot.sessionId, snapshot.bridgeId);
+      store.setEncryptionReady(true);
+      store.setError("Unable to reconnect to the saved bridge session.");
+    }
+
+    return snapshot;
+  }
+
+  async disconnect(options: { clearSnapshot?: boolean } = {}): Promise<void> {
     this.unsubscribeMessage?.();
     this.unsubscribeMessage = null;
     this.unsubscribeState?.();
@@ -109,6 +133,7 @@ class RelaySessionManager {
 
     if (options.clearSnapshot !== false) {
       this.snapshot = null;
+      await clearSnapshot();
     }
 
     useSessionStore.getState().disconnect();
@@ -200,7 +225,8 @@ class RelaySessionManager {
         reject(new Error("Timed out connecting to the relay."));
       }, timeoutMs);
 
-      const unsubscribe = this.client?.onStateChange((state) => {
+      let unsubscribe: (() => void) | undefined;
+      unsubscribe = this.client?.onStateChange((state) => {
         if (state === "connected") {
           clearTimeout(timer);
           unsubscribe?.();
@@ -227,4 +253,26 @@ function generateId(length: number): string {
 
 function isEncryptedMessage(message: RelayMessage): message is EncryptedRelayMessage {
   return message.type === "encrypted" && typeof message.payload === "object" && message.payload !== null;
+}
+
+async function persistSnapshot(snapshot: ActiveRelaySession): Promise<void> {
+  await SecureStore.setItemAsync(ACTIVE_SESSION_KEY, JSON.stringify(snapshot));
+}
+
+async function loadSnapshot(): Promise<ActiveRelaySession | null> {
+  const value = await SecureStore.getItemAsync(ACTIVE_SESSION_KEY);
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(value) as ActiveRelaySession;
+  } catch {
+    await clearSnapshot();
+    return null;
+  }
+}
+
+async function clearSnapshot(): Promise<void> {
+  await SecureStore.deleteItemAsync(ACTIVE_SESSION_KEY);
 }

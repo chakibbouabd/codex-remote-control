@@ -78,7 +78,7 @@ export default function SettingsScreen() {
           <InfoRow label="Protocol" value="CRC v1" />
         </Section>
 
-        <TouchableOpacity style={styles.disconnectButton} onPress={() => relaySessionManager.disconnect()}>
+        <TouchableOpacity style={styles.disconnectButton} onPress={() => void relaySessionManager.disconnect()}>
           <Text style={styles.disconnectText}>Disconnect</Text>
         </TouchableOpacity>
       </View>
