@@ -1,5 +1,5 @@
 /**
- * Mobile-side E2EE using WebCrypto API.
+ * Mobile-side E2EE using pure-JS crypto.
  *
  * Keys are kept in the same DER formats used by the bridge:
  * - public keys: SPKI
@@ -9,7 +9,12 @@
  * with the relay protocol and the bridge's Node.js crypto implementation.
  */
 
+import { gcm } from "@noble/ciphers/aes.js";
+import { hkdf } from "@noble/hashes/hkdf.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import type { EncryptedPayload } from "@crc/shared";
+import { getRandomBytes } from "expo-crypto";
+import nacl from "tweetnacl";
 
 export interface ClientKeyPair {
   ed25519PublicKey: string;
@@ -23,26 +28,24 @@ export interface DirectionalSessionKeys {
   clientToBridge: string;
 }
 
-export async function generateClientKeyPair(): Promise<ClientKeyPair> {
-  const ed25519 = assertCryptoKeyPair(
-    await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]),
-  );
-  const x25519 = assertCryptoKeyPair(
-    await crypto.subtle.generateKey({ name: "X25519" }, true, ["deriveBits"]),
-  );
+const DER_PREFIX = {
+  ed25519Public: Uint8Array.from([0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00]),
+  ed25519Private: Uint8Array.from([0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20]),
+  x25519Public: Uint8Array.from([0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x6e, 0x03, 0x21, 0x00]),
+  x25519Private: Uint8Array.from([0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x6e, 0x04, 0x22, 0x04, 0x20]),
+} as const;
 
-  const [ed25519Public, ed25519Private, x25519Public, x25519Private] = await Promise.all([
-    crypto.subtle.exportKey("spki", ed25519.publicKey),
-    crypto.subtle.exportKey("pkcs8", ed25519.privateKey),
-    crypto.subtle.exportKey("spki", x25519.publicKey),
-    crypto.subtle.exportKey("pkcs8", x25519.privateKey),
-  ]);
+configureNaclPrng();
+
+export async function generateClientKeyPair(): Promise<ClientKeyPair> {
+  const ed25519 = nacl.sign.keyPair();
+  const x25519 = nacl.box.keyPair();
 
   return {
-    ed25519PublicKey: encodeBase64Url(ed25519Public),
-    ed25519PrivateKey: encodeBase64Url(ed25519Private),
-    x25519PublicKey: encodeBase64Url(x25519Public),
-    x25519PrivateKey: encodeBase64Url(x25519Private),
+    ed25519PublicKey: encodeBase64Url(wrapDer(DER_PREFIX.ed25519Public, ed25519.publicKey)),
+    ed25519PrivateKey: encodeBase64Url(wrapDer(DER_PREFIX.ed25519Private, ed25519.secretKey.slice(0, 32))),
+    x25519PublicKey: encodeBase64Url(wrapDer(DER_PREFIX.x25519Public, x25519.publicKey)),
+    x25519PrivateKey: encodeBase64Url(wrapDer(DER_PREFIX.x25519Private, x25519.secretKey)),
   };
 }
 
@@ -50,27 +53,12 @@ export async function deriveSharedSecret(
   myPrivateKeyBase64Url: string,
   theirPublicKeyBase64Url: string,
 ): Promise<ArrayBuffer> {
-  const [privateKey, publicKey] = await Promise.all([
-    crypto.subtle.importKey(
-      "pkcs8",
-      decodeBase64Url(myPrivateKeyBase64Url),
-      { name: "X25519" },
-      false,
-      ["deriveBits"],
-    ),
-    crypto.subtle.importKey(
-      "spki",
-      decodeBase64Url(theirPublicKeyBase64Url),
-      { name: "X25519" },
-      false,
-      [],
-    ),
-  ]);
-
-  return crypto.subtle.deriveBits(
-    { name: "X25519", public: publicKey },
-    privateKey,
-    256,
+  const privateKey = unwrapDer(DER_PREFIX.x25519Private, new Uint8Array(decodeBase64Url(myPrivateKeyBase64Url)));
+  const publicKey = unwrapDer(DER_PREFIX.x25519Public, new Uint8Array(decodeBase64Url(theirPublicKeyBase64Url)));
+  const sharedSecret = nacl.scalarMult(privateKey, publicKey);
+  return sharedSecret.buffer.slice(
+    sharedSecret.byteOffset,
+    sharedSecret.byteOffset + sharedSecret.byteLength,
   );
 }
 
@@ -78,18 +66,12 @@ export async function deriveAESKeys(
   sharedSecret: ArrayBuffer,
   sessionId: string,
 ): Promise<{ bridgeToClient: ArrayBuffer; clientToBridge: ArrayBuffer }> {
-  const encoder = new TextEncoder();
-  const hkdfKey = await crypto.subtle.importKey("raw", sharedSecret, "HKDF", false, ["deriveBits"]);
-
-  const bits = await crypto.subtle.deriveBits(
-    {
-      name: "HKDF",
-      hash: "SHA-256",
-      salt: encoder.encode(sessionId),
-      info: encoder.encode("crc-session-keys"),
-    },
-    hkdfKey,
-    512,
+  const bits = hkdf(
+    sha256,
+    new Uint8Array(sharedSecret),
+    new TextEncoder().encode(sessionId),
+    new TextEncoder().encode("crc-session-keys"),
+    64,
   );
 
   return splitDirectionalKeyBytes(bits);
@@ -110,23 +92,11 @@ export async function encryptRelayPayload(
   plaintext: string,
   keyBase64Url: string,
 ): Promise<EncryptedPayload> {
-  const encoder = new TextEncoder();
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    decodeBase64Url(keyBase64Url),
-    { name: "AES-GCM" },
-    false,
-    ["encrypt"],
-  );
-
-  const encrypted = new Uint8Array(
-    await crypto.subtle.encrypt(
-      { name: "AES-GCM", iv },
-      cryptoKey,
-      encoder.encode(plaintext),
-    ),
-  );
+  const iv = getRandomBytes(12);
+  const encrypted = gcm(
+    new Uint8Array(decodeBase64Url(keyBase64Url)),
+    iv,
+  ).encrypt(new TextEncoder().encode(plaintext));
 
   const tagLength = 16;
   const ciphertext = encrypted.slice(0, encrypted.length - tagLength);
@@ -143,14 +113,6 @@ export async function decryptRelayPayload(
   payload: EncryptedPayload,
   keyBase64Url: string,
 ): Promise<string> {
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    decodeBase64Url(keyBase64Url),
-    { name: "AES-GCM" },
-    false,
-    ["decrypt"],
-  );
-
   const iv = new Uint8Array(decodeBase64Url(payload.iv));
   const ciphertext = new Uint8Array(decodeBase64Url(payload.ciphertext));
   const tag = new Uint8Array(decodeBase64Url(payload.tag));
@@ -158,11 +120,10 @@ export async function decryptRelayPayload(
   combined.set(ciphertext);
   combined.set(tag, ciphertext.length);
 
-  const decrypted = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv },
-    cryptoKey,
-    combined,
-  );
+  const decrypted = gcm(
+    new Uint8Array(decodeBase64Url(keyBase64Url)),
+    iv,
+  ).decrypt(combined);
 
   return new TextDecoder().decode(decrypted);
 }
@@ -195,21 +156,42 @@ export function decodeBase64Url(value: string): ArrayBuffer {
   return bytes.buffer;
 }
 
-function splitDirectionalKeyBytes(bits: ArrayBuffer): {
+function splitDirectionalKeyBytes(bits: Uint8Array): {
   bridgeToClient: ArrayBuffer;
   clientToBridge: ArrayBuffer;
 } {
-  const bytes = new Uint8Array(bits);
   return {
-    bridgeToClient: bytes.slice(0, 32).buffer,
-    clientToBridge: bytes.slice(32, 64).buffer,
+    bridgeToClient: bits.slice(0, 32).buffer,
+    clientToBridge: bits.slice(32, 64).buffer,
   };
 }
 
-function assertCryptoKeyPair(value: CryptoKeyPair | CryptoKey): CryptoKeyPair {
-  if ("publicKey" in value && "privateKey" in value) {
-    return value;
+function wrapDer(prefix: Uint8Array, rawKey: Uint8Array): Uint8Array {
+  const output = new Uint8Array(prefix.length + rawKey.length);
+  output.set(prefix, 0);
+  output.set(rawKey, prefix.length);
+  return output;
+}
+
+function unwrapDer(prefix: Uint8Array, derKey: Uint8Array): Uint8Array {
+  if (derKey.length < prefix.length + 32) {
+    throw new Error("Invalid DER key length");
   }
 
-  throw new Error("Expected a CryptoKeyPair");
+  for (let i = 0; i < prefix.length; i++) {
+    if (derKey[i] !== prefix[i]) {
+      throw new Error("Unsupported DER key format");
+    }
+  }
+
+  return derKey.slice(prefix.length, prefix.length + 32);
+}
+
+function configureNaclPrng(): void {
+  nacl.setPRNG((target, length) => {
+    const randomBytes = getRandomBytes(length);
+    for (let i = 0; i < length; i++) {
+      target[i] = randomBytes[i];
+    }
+  });
 }

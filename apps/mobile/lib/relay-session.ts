@@ -4,6 +4,7 @@ import type {
   ErrorPayload,
   RelayMessage,
 } from "@crc/shared";
+import { getRandomBytes } from "expo-crypto";
 import { type PairingQrData, normalizeRelayUrl, normalizeSessionCode } from "./pairing";
 import {
   type ClientKeyPair,
@@ -241,7 +242,7 @@ export const relaySessionManager = new RelaySessionManager();
 
 function generateId(length: number): string {
   const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const bytes = crypto.getRandomValues(new Uint8Array(length));
+  const bytes = getRandomBytes(length);
   let result = "";
 
   for (const byte of bytes) {
