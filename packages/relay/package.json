@@ -14,6 +14,7 @@
       "import": "./dist/index.js"
     }
   },
+  "files": ["dist"],
   "keywords": ["codex", "remote-control", "relay", "websocket", "e2ee"],
   "license": "MIT",
   "author": "Chakib Bouabd",

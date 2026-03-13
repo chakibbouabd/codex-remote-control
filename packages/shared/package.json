@@ -11,6 +11,7 @@
       "import": "./dist/index.js"
     }
   },
+  "files": ["dist"],
   "keywords": ["codex", "remote-control", "ai-agent", "e2ee", "json-rpc", "websocket"],
   "license": "MIT",
   "author": "Chakib Bouabd",
