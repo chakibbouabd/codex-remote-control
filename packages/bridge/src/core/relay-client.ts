@@ -87,10 +87,8 @@ export class RelayClient extends EventEmitter {
     this.state = "connecting";
     this.emit("stateChange", this.state);
 
-    const url = `${this.relayUrl}/${this.sessionId}`;
-    this.ws = new WebSocket(url, {
-      headers: { "x-role": this.role },
-    });
+    const url = `${this.relayUrl}/${this.sessionId}?role=${this.role}`;
+    this.ws = new WebSocket(url);
 
     this.ws.on("open", () => {
       this.state = "connected";
