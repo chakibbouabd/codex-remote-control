@@ -195,16 +195,19 @@ pnpm --filter @crc/mobile ios
 pnpm --filter @crc/mobile android
 ```
 
+For local testing today:
+
+- use the manual connect screen with the relay URL and 6-character session code
+- or paste the QR payload JSON into the QR screen
+
 ### Known Local Limitations
 
-- The relay server starts correctly from this repo.
-- The bridge CLI starts, prints the workspace and QR payload, then times out with
-  `codex-cli 0.114.0` because `packages/bridge/src/agent/codex-adapter.ts`
-  expects `codex app-server` to emit a `ws://...` URL on stdout, while the
-  current Codex CLI defaults to `stdio://` unless started with `--listen`.
-- The Expo app starts locally, but the pairing screens are still placeholders:
-  `apps/mobile/app/(auth)/connect.tsx` and `apps/mobile/app/(auth)/pair.tsx`
-  do not complete a real bridge handshake yet.
+- The relay server and bridge now start correctly from this repo for local use.
+- The mobile app now supports manual connect and pasted QR payloads for local
+  pairing state, but camera-based QR scanning is still not wired.
+- The full encrypted mobile handshake is still incomplete:
+  `apps/mobile/hooks/usePairing.ts` stores the pairing/session data locally, but
+  does not yet send the `pair.confirm` message over the relay WebSocket.
 - Expo web is not currently ready in this repo. `expo start --web` fails because
   `react-native-web` is not installed.
 - The bridge defaults to the hosted relay unless you set `CRC_RELAY`, so use the
