@@ -20,7 +20,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     <View style={[styles.container, isUser ? styles.userBubble : styles.assistantBubble]}>
       {!isUser && <Text style={styles.roleLabel}>Assistant</Text>}
       <Text style={styles.content}>{message.content}</Text>
-      {isUser && message.role === "user" && (
+      {isUser && (
         <Text style={styles.roleLabel}>You</Text>
       )}
       {message.isStreaming && <Text style={styles.cursor}>▊</Text>}

@@ -11,7 +11,7 @@
  *   AES-256-GCM provides both confidentiality and integrity.
  */
 
-import { createCipheriv, createDecipheriv, randomBytes, createHmac } from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { hkdf } from "node:crypto";
 
 export interface DeriveKeyParams {
