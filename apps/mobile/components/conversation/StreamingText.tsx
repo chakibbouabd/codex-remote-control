@@ -1,6 +1,14 @@
+/**
+ * StreamingText component that displays text with an optional animated cursor while streaming.
+ */
 import { Text, StyleSheet } from "react-native";
 import { Colors, FontSize } from "@/constants/theme";
 
+/**
+ * Props for the StreamingText component.
+ * @property text - The text content to display.
+ * @property isComplete - Whether the stream has finished (hides cursor when true).
+ */
 interface StreamingTextProps {
   text: string;
   isComplete?: boolean;

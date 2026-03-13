@@ -1,5 +1,10 @@
 /**
- * `crc status` command — show bridge connection status.
+ * @module cli/commands/status
+ *
+ * `crc status` command -- show bridge connection and session status.
+ *
+ * Displays the detected workspace info, last active session details,
+ * and current relay configuration.
  */
 
 import type { Command } from "commander";

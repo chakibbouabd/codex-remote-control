@@ -1,3 +1,7 @@
+/**
+ * Hook providing QR-based and manual pairing flows with the bridge.
+ * @returns An object with pairWithQR and pairManually functions.
+ */
 import { useCallback } from "react";
 import { generateClientKeyPair, deriveSharedSecret, deriveAESKeys } from "@/lib/crypto-client";
 import { useSessionStore } from "@/stores/session";
@@ -5,6 +9,10 @@ import { useSessionStore } from "@/stores/session";
 export function usePairing() {
   const { setPaired, setStatus } = useSessionStore();
 
+  /**
+   * Initiate pairing using data scanned from a QR code.
+   * @param qrData - The decoded QR payload containing relay and bridge info.
+   */
   const pairWithQR = useCallback(async (qrData: {
     v: number;
     relay: string;
@@ -31,6 +39,11 @@ export function usePairing() {
     // in a follow-up commit
   }, [setPaired, setStatus]);
 
+  /**
+   * Initiate manual pairing using a relay URL and session code.
+   * @param relayUrl - The relay server URL.
+   * @param sessionCode - The session code to pair with.
+   */
   const pairManually = useCallback(async (relayUrl: string, sessionCode: string) => {
     pairWithQR({
       v: 1,

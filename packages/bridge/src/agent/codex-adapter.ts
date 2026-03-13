@@ -20,6 +20,10 @@ import { AgentStatus } from "./types.js";
 const CODEX_BIN = "codex";
 const WS_URL_REGEX = /ws:\/\/[^\s]+/;
 
+/**
+ * Agent adapter that spawns the Codex CLI in app-server mode
+ * and communicates with it via JSON-RPC over WebSocket.
+ */
 export class CodexAdapter implements AgentAdapter {
   readonly adapterId = "codex-v2";
 
@@ -43,6 +47,11 @@ export class CodexAdapter implements AgentAdapter {
 
   // ─── Lifecycle ─────────────────────────────────────────────────
 
+  /**
+   * Spawns the Codex app-server process and connects to its WebSocket.
+   * @param config - Agent configuration including working directory and options.
+   * @returns A promise that resolves when the agent is running.
+   */
   async start(config: AgentConfig): Promise<void> {
     this.config = config;
     this.status = AgentStatus.Starting;
@@ -94,6 +103,10 @@ export class CodexAdapter implements AgentAdapter {
     this.status = AgentStatus.Running;
   }
 
+  /**
+   * Stops the Codex process, closes the WebSocket, and rejects pending requests.
+   * @returns A promise that resolves when the agent has fully stopped.
+   */
   async stop(): Promise<void> {
     this.status = AgentStatus.Stopping;
 
@@ -141,12 +154,19 @@ export class CodexAdapter implements AgentAdapter {
     this.status = AgentStatus.Stopped;
   }
 
+  /** Returns the current lifecycle status of the agent. */
   getStatus(): AgentStatus {
     return this.status;
   }
 
   // ─── Messaging ─────────────────────────────────────────────────
 
+  /**
+   * Sends a JSON-RPC request to the Codex agent and waits for the response.
+   * @param request - The JSON-RPC request to send.
+   * @returns A promise resolving to the typed JSON-RPC response.
+   * @throws If the agent is not connected or the request times out.
+   */
   async sendRequest<T = unknown>(
     request: JsonRpcRequest,
   ): Promise<JsonRpcResponse<T>> {
@@ -173,6 +193,11 @@ export class CodexAdapter implements AgentAdapter {
     });
   }
 
+  /**
+   * Subscribes to Codex event notifications.
+   * @param handler - Callback invoked with each event notification.
+   * @returns An unsubscribe function to remove the event listener.
+   */
   onEvent(handler: (event: CodexEvent) => void): () => void {
     this.eventEmitter.on("event", handler);
     return () => {

@@ -1,5 +1,17 @@
+/**
+ * Conversation store managing messages, streaming state, and pending approvals.
+ */
 import { create } from "zustand";
 
+/**
+ * Represents a single message in a conversation.
+ * @property id - Unique message identifier.
+ * @property threadId - The thread this message belongs to.
+ * @property role - Who sent the message (user, assistant, or system).
+ * @property content - The text content of the message.
+ * @property timestamp - Unix timestamp (ms) when the message was created.
+ * @property isStreaming - Whether the message is still being streamed.
+ */
 export interface ConversationMessage {
   id: string;
   threadId: string;
@@ -9,17 +21,25 @@ export interface ConversationMessage {
   isStreaming?: boolean;
 }
 
+/** Internal state and actions for the conversation store. */
 interface ConversationState {
   messages: ConversationMessage[];
   isStreaming: boolean;
   pendingApproval: { id: string; command: string } | null;
   activeTurnId: string | null;
+  /** Replace all messages with the given array. */
   setMessages: (messages: ConversationMessage[]) => void;
+  /** Append a new message to the list. */
   addMessage: (message: ConversationMessage) => void;
+  /** Update a message by merging partial updates. */
   updateMessage: (id: string, updates: Partial<ConversationMessage>) => void;
+  /** Toggle whether the assistant is currently streaming. */
   setStreaming: (streaming: boolean) => void;
+  /** Set or clear the pending approval request. */
   setPendingApproval: (approval: { id: string; command: string } | null) => void;
+  /** Set or clear the active conversation turn ID. */
   setActiveTurnId: (id: string | null) => void;
+  /** Clear all messages and reset streaming state. */
   clearMessages: () => void;
 }
 

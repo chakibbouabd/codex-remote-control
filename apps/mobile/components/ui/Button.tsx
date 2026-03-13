@@ -1,6 +1,16 @@
+/**
+ * Reusable Button component with primary, danger, and ghost variants.
+ */
 import { TouchableOpacity, Text, StyleSheet } from "react-native";
 import { Colors, BorderRadius, FontSize, Spacing } from "@/constants/theme";
 
+/**
+ * Props for the Button component.
+ * @property title - The button label text.
+ * @property onPress - Callback invoked when the button is pressed.
+ * @property variant - Visual style variant.
+ * @property disabled - Whether the button is disabled.
+ */
 interface ButtonProps {
   title: string;
   onPress: () => void;

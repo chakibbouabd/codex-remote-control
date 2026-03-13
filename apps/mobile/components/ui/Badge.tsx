@@ -1,6 +1,14 @@
+/**
+ * Compact Badge component for displaying status labels with color variants.
+ */
 import { View, Text, StyleSheet } from "react-native";
 import { Colors, BorderRadius, FontSize, Spacing } from "@/constants/theme";
 
+/**
+ * Props for the Badge component.
+ * @property label - The text displayed inside the badge.
+ * @property variant - Color variant controlling the badge background.
+ */
 interface BadgeProps {
   label: string;
   variant?: "default" | "success" | "warning" | "danger";

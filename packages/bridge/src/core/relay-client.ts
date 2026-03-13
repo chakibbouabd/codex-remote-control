@@ -28,6 +28,21 @@ export type RelayClientState =
   | "connected"
   | "paired";
 
+/**
+ * RelayClient — WebSocket client that connects to the CRC relay server.
+ *
+ * Handles pairing, encrypted messaging, automatic reconnection with
+ * exponential backoff, heartbeat keepalive, and message buffering.
+ *
+ * @event stateChange - Emitted when the connection state changes.
+ *   Argument: {@link RelayClientState}
+ * @event disconnected - Emitted when the WebSocket connection is closed.
+ * @event connected - Emitted when the WebSocket connection is established.
+ * @event pairConfirm - Emitted when pairing is confirmed by the relay.
+ * @event message - Emitted when an encrypted or relay message is received.
+ * @event relayError - Emitted when the relay returns an error message.
+ * @event reconnecting - Emitted before an automatic reconnect attempt.
+ */
 export class RelayClient extends EventEmitter {
   private ws: WebSocket | null = null;
   private relayUrl: string;
@@ -40,12 +55,18 @@ export class RelayClient extends EventEmitter {
   private outboundBuffer: RelayMessage[] = [];
   private outboundSeq = 0;
 
+  /**
+   * Creates a new RelayClient instance.
+   * @param relayUrl - Base URL of the relay WebSocket server.
+   * @param sessionId - Unique session identifier for this connection.
+   */
   constructor(relayUrl: string, sessionId: string) {
     super();
     this.relayUrl = relayUrl;
     this.sessionId = sessionId;
   }
 
+  /** Returns the current connection state of the client. */
   getState(): RelayClientState {
     return this.state;
   }
@@ -56,6 +77,10 @@ export class RelayClient extends EventEmitter {
 
   // ─── Connection ────────────────────────────────────────────────
 
+  /**
+   * Opens a WebSocket connection to the relay server.
+   * Starts heartbeat keepalive and flushes any buffered messages on open.
+   */
   connect(): void {
     if (this.ws) return;
 
@@ -107,6 +132,9 @@ export class RelayClient extends EventEmitter {
     });
   }
 
+  /**
+   * Gracefully disconnects from the relay server and clears all buffers.
+   */
   disconnect(): void {
     this.stopHeartbeat();
     if (this.reconnectTimer) {
@@ -132,6 +160,10 @@ export class RelayClient extends EventEmitter {
 
   // ─── Messaging ─────────────────────────────────────────────────
 
+  /**
+   * Sends a message through the WebSocket, or buffers it if not connected.
+   * @param message - The relay message to send.
+   */
   send(message: RelayMessage): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.outboundSeq++;

@@ -1,7 +1,10 @@
 /**
- * `crc pair` command — display QR code for pairing.
+ * @module cli/commands/pair
  *
- * Generates pairing data and displays a QR code for the mobile app.
+ * `crc pair` command -- display QR code for pairing.
+ *
+ * Generates E2EE pairing data and displays a QR code
+ * that the mobile app can scan to establish a session.
  */
 
 import type { Command } from "commander";

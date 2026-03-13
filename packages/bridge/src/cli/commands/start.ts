@@ -1,5 +1,7 @@
 /**
- * `crc start` command — start the bridge.
+ * @module cli/commands/start
+ *
+ * `crc start` command -- start the bridge.
  *
  * Detects the workspace, spawns the agent, connects to the relay,
  * generates QR pairing data, and begins bridging messages.

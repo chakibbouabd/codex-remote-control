@@ -1,6 +1,15 @@
+/**
+ * ApprovalCard component for requesting user confirmation of a shell command.
+ */
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Colors, BorderRadius, Spacing, FontSize } from "@/constants/theme";
 
+/**
+ * Props for the ApprovalCard component.
+ * @property command - The shell command requiring approval.
+ * @property onAccept - Callback invoked when the user accepts.
+ * @property onDecline - Callback invoked when the user declines.
+ */
 interface ApprovalCardProps {
   command: string;
   onAccept: () => void;

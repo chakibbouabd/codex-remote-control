@@ -1,6 +1,16 @@
+/**
+ * GitActionSheet modal component that presents a list of git actions for the user to select.
+ */
 import { View, Text, TouchableOpacity, StyleSheet, Modal } from "react-native";
 import { Colors, BorderRadius, Spacing, FontSize } from "@/constants/theme";
 
+/**
+ * Represents a single action item in the git action sheet.
+ * @property label - Display label for the action.
+ * @property icon - Emoji or icon character.
+ * @property destructive - Whether the action is destructive (styled in red).
+ * @property onPress - Callback invoked when the action is selected.
+ */
 interface GitAction {
   label: string;
   icon: string;
@@ -8,6 +18,12 @@ interface GitAction {
   onPress: () => void;
 }
 
+/**
+ * Props for the GitActionSheet component.
+ * @property visible - Whether the action sheet modal is visible.
+ * @property onClose - Callback invoked to close the sheet.
+ * @property actions - The list of git actions to display.
+ */
 interface GitActionSheetProps {
   visible: boolean;
   onClose: () => void;

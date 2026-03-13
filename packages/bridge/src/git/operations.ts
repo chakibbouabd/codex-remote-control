@@ -52,6 +52,11 @@ function runGit(repoPath: string, args: string[]): Promise<GitOperationResult> {
     }));
 }
 
+/**
+ * Returns the current branch, ahead/behind counts, and staged/modified/untracked files.
+ * @param repoPath - Absolute path to the git repository.
+ * @returns A {@link GitStatusResult} with branch info and file lists.
+ */
 export async function gitStatus(repoPath: string): Promise<GitStatusResult> {
   const branchResult = await runGit(repoPath, ["rev-parse", "--abbrev-ref", "HEAD"]);
   if (!branchResult.success) {
@@ -92,60 +97,135 @@ export async function gitStatus(repoPath: string): Promise<GitStatusResult> {
   return { branch, ahead, behind, dirty, staged, modified, untracked };
 }
 
+/**
+ * Stages the given file paths in the git index.
+ * @param repoPath - Absolute path to the git repository.
+ * @param paths - File or directory paths to stage.
+ * @returns A {@link GitOperationResult} indicating success or failure.
+ */
 export async function gitAdd(repoPath: string, paths: string[]): Promise<GitOperationResult> {
   return runGit(repoPath, ["add", ...paths]);
 }
 
+/**
+ * Creates a new commit with the specified message.
+ * @param repoPath - Absolute path to the git repository.
+ * @param message - The commit message string.
+ * @returns A {@link GitOperationResult} indicating success or failure.
+ */
 export async function gitCommit(repoPath: string, message: string): Promise<GitOperationResult> {
   return runGit(repoPath, ["commit", "-m", message]);
 }
 
+/**
+ * Pushes commits to a remote, optionally specifying the remote and branch.
+ * @param repoPath - Absolute path to the git repository.
+ * @param remote - Optional remote name (e.g. "origin").
+ * @param branch - Optional branch name to push.
+ * @returns A {@link GitOperationResult} indicating success or failure.
+ */
 export async function gitPush(repoPath: string, remote?: string, branch?: string): Promise<GitOperationResult> {
   const args = ["push"];
   if (remote && branch) args.push(remote, branch);
   return runGit(repoPath, args);
 }
 
+/**
+ * Pulls changes from a remote, optionally specifying the remote and branch.
+ * @param repoPath - Absolute path to the git repository.
+ * @param remote - Optional remote name (e.g. "origin").
+ * @param branch - Optional branch name to pull.
+ * @returns A {@link GitOperationResult} indicating success or failure.
+ */
 export async function gitPull(repoPath: string, remote?: string, branch?: string): Promise<GitOperationResult> {
   const args = ["pull"];
   if (remote && branch) args.push(remote, branch);
   return runGit(repoPath, args);
 }
 
+/**
+ * Lists all local branches.
+ * @param repoPath - Absolute path to the git repository.
+ * @returns A {@link GitOperationResult} with the branch listing output.
+ */
 export async function gitBranchList(repoPath: string): Promise<GitOperationResult> {
   return runGit(repoPath, ["branch", "--list"]);
 }
 
+/**
+ * Creates and switches to a new branch with the given name.
+ * @param repoPath - Absolute path to the git repository.
+ * @param name - The name for the new branch.
+ * @returns A {@link GitOperationResult} indicating success or failure.
+ */
 export async function gitBranchCreate(repoPath: string, name: string): Promise<GitOperationResult> {
   return runGit(repoPath, ["checkout", "-b", name]);
 }
 
+/**
+ * Switches to an existing branch with the given name.
+ * @param repoPath - Absolute path to the git repository.
+ * @param name - The name of the branch to switch to.
+ * @returns A {@link GitOperationResult} indicating success or failure.
+ */
 export async function gitBranchSwitch(repoPath: string, name: string): Promise<GitOperationResult> {
   return runGit(repoPath, ["checkout", name]);
 }
 
+/**
+ * Stashes the current working directory changes.
+ * @param repoPath - Absolute path to the git repository.
+ * @returns A {@link GitOperationResult} indicating success or failure.
+ */
 export async function gitStash(repoPath: string): Promise<GitOperationResult> {
   return runGit(repoPath, ["stash"]);
 }
 
+/**
+ * Applies the most recent stash entry to the working directory.
+ * @param repoPath - Absolute path to the git repository.
+ * @returns A {@link GitOperationResult} indicating success or failure.
+ */
 export async function gitStashPop(repoPath: string): Promise<GitOperationResult> {
   return runGit(repoPath, ["stash", "pop"]);
 }
 
+/**
+ * Shows the diff of unstaged changes, optionally against a target ref.
+ * @param repoPath - Absolute path to the git repository.
+ * @param target - Optional ref to diff against (e.g. a commit hash or branch).
+ * @returns A {@link GitOperationResult} with the diff output.
+ */
 export async function gitDiff(repoPath: string, target?: string): Promise<GitOperationResult> {
   const args = ["diff"];
   if (target) args.push(target);
   return runGit(repoPath, args);
 }
 
+/**
+ * Returns formatted commit log entries, up to the specified count.
+ * @param repoPath - Absolute path to the git repository.
+ * @param count - Maximum number of log entries to return (default 10).
+ * @returns A {@link GitOperationResult} with pipe-delimited log output.
+ */
 export async function gitLog(repoPath: string, count = 10): Promise<GitOperationResult> {
   return runGit(repoPath, ["log", `--max-count=${count}`, "--format=%H|%s|%an|%ai"]);
 }
 
+/**
+ * Returns the origin remote URL for the repository.
+ * @param repoPath - Absolute path to the git repository.
+ * @returns A {@link GitOperationResult} with the remote URL.
+ */
 export async function gitRemoteUrl(repoPath: string): Promise<GitOperationResult> {
   return runGit(repoPath, ["remote", "get-url", "origin"]);
 }
 
+/**
+ * Hard-resets the working tree and index to match the upstream branch.
+ * @param repoPath - Absolute path to the git repository.
+ * @returns A {@link GitOperationResult} indicating success or failure.
+ */
 export async function gitResetToRemote(repoPath: string): Promise<GitOperationResult> {
   return runGit(repoPath, ["reset", "--hard", "@{upstream}"]);
 }

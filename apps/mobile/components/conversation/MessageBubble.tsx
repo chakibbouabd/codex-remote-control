@@ -1,7 +1,14 @@
+/**
+ * MessageBubble component that renders a user or assistant message in a chat conversation.
+ */
 import { View, Text, StyleSheet } from "react-native";
 import { Colors, BorderRadius, Spacing, FontSize } from "@/constants/theme";
 import type { ConversationMessage } from "@/stores/conversation";
 
+/**
+ * Props for the MessageBubble component.
+ * @property message - The conversation message to render.
+ */
 interface MessageBubbleProps {
   message: ConversationMessage;
 }

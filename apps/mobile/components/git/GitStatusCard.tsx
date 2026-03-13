@@ -1,6 +1,17 @@
+/**
+ * GitStatusCard component displaying the current branch and file change counts.
+ */
 import { View, Text, StyleSheet } from "react-native";
 import { Colors, BorderRadius, Spacing, FontSize } from "@/constants/theme";
 
+/**
+ * Git repository status information.
+ * @property branch - Name of the current branch.
+ * @property dirty - Whether the working tree has uncommitted changes.
+ * @property staged - Number of staged files.
+ * @property modified - Number of modified files.
+ * @property untracked - Number of untracked files.
+ */
 interface GitStatusInfo {
   branch: string;
   dirty: boolean;
@@ -9,6 +20,10 @@ interface GitStatusInfo {
   untracked: number;
 }
 
+/**
+ * Props for the GitStatusCard component.
+ * @property status - The git status information to display.
+ */
 interface GitStatusCardProps {
   status: GitStatusInfo;
 }
