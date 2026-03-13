@@ -149,13 +149,13 @@ describe("MessageForwarder integration", () => {
     bridgeWs.send(JSON.stringify({ type: "encrypted", payload: { test: true } }));
     const received = await waitForMessage(clientWs);
     expect(received.type).toBe("encrypted");
-    expect(received.payload.test).toBe(true);
+    expect((received.payload as Record<string, unknown>).test).toBe(true);
 
     // Client sends back → bridge receives it
     clientWs.send(JSON.stringify({ type: "encrypted", payload: { reply: true } }));
     const reply = await waitForMessage(bridgeWs);
     expect(reply.type).toBe("encrypted");
-    expect(reply.payload.reply).toBe(true);
+    expect((reply.payload as Record<string, unknown>).reply).toBe(true);
 
     bridgeWs.close();
     clientWs.close();
@@ -178,7 +178,7 @@ describe("MessageForwarder integration", () => {
 
     const disconnectMsg = await waitForMessage(clientWs);
     expect(disconnectMsg.type).toBe("disconnect");
-    expect(disconnectMsg.payload.role).toBe("bridge");
+    expect((disconnectMsg.payload as Record<string, unknown>).role).toBe("bridge");
 
     clientWs.close();
   });

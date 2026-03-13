@@ -46,7 +46,7 @@ export function registerStartCommand(program: Command): void {
       // Create agent and router
       const agent = new CodexAdapter();
       const router = new MessageRouter(agent, {
-        relayUrl: options.relay,
+        relayUrl: options.relay ?? DEFAULT_RELAY_URL,
         cwd: ws.root,
         sessionId: options.session,
       });
