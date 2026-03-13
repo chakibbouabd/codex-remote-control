@@ -21,3 +21,5 @@ export {
   RECONNECT_BACKOFF_MAX_MS,
   QR_EXPIRY_MS,
 } from "./protocol/constants.js";
+export { generateId, generateSessionCode } from "./utils/id.js";
+export { now, isoNow, fromMs, relativeTime, isExpired } from "./utils/timestamp.js";
