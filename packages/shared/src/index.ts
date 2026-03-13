@@ -23,3 +23,4 @@ export {
 } from "./protocol/constants.js";
 export { generateId, generateSessionCode } from "./utils/id.js";
 export { now, isoNow, fromMs, relativeTime, isExpired } from "./utils/timestamp.js";
+export * from "./crypto/index.js";
