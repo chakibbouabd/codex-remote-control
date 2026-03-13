@@ -4,6 +4,7 @@ export interface PairingQrData {
   sessionId: string;
   bridgeId: string;
   bridgePublicKey: string;
+  bridgeKeyExchangePublicKey: string;
   expiresAt: number;
 }
 
@@ -35,6 +36,7 @@ export function parsePairingQrPayload(value: string): PairingQrData {
     typeof data.sessionId !== "string" ||
     typeof data.bridgeId !== "string" ||
     typeof data.bridgePublicKey !== "string" ||
+    typeof data.bridgeKeyExchangePublicKey !== "string" ||
     typeof data.expiresAt !== "number"
   ) {
     throw new Error("QR payload is missing required pairing fields");
@@ -46,6 +48,7 @@ export function parsePairingQrPayload(value: string): PairingQrData {
     sessionId: normalizeSessionCode(data.sessionId),
     bridgeId: data.bridgeId,
     bridgePublicKey: data.bridgePublicKey,
+    bridgeKeyExchangePublicKey: data.bridgeKeyExchangePublicKey,
     expiresAt: data.expiresAt,
   };
 }

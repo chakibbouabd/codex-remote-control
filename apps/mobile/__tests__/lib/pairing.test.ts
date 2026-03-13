@@ -18,6 +18,7 @@ describe("pairing helpers", () => {
         sessionId: "ab12cd",
         bridgeId: "bridge-1",
         bridgePublicKey: "pub",
+        bridgeKeyExchangePublicKey: "x25519",
         expiresAt: 123456,
       })),
     ).toEqual({
@@ -26,6 +27,7 @@ describe("pairing helpers", () => {
       sessionId: "AB12CD",
       bridgeId: "bridge-1",
       bridgePublicKey: "pub",
+      bridgeKeyExchangePublicKey: "x25519",
       expiresAt: 123456,
     });
   });

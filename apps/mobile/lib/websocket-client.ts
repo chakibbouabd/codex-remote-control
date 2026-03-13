@@ -1,30 +1,38 @@
 /**
  * Secure WebSocket client for the CRC mobile app.
  *
- * Connects to the relay server, handles E2EE encryption/decryption,
- * auto-reconnects with exponential backoff, and buffers messages.
+ * Connects to the relay server as the mobile client, auto-reconnects with
+ * exponential backoff, and buffers messages while disconnected.
  */
 
-import { type RelayMessage, isEncryptedRelayMessage } from "@crc/shared";
+import { type RelayMessage } from "@crc/shared";
 
 type ClientState = "disconnected" | "connecting" | "connected";
 
 type MessageHandler = (message: RelayMessage) => void;
+type StateHandler = (state: ClientState) => void;
 
 export class SecureWebSocketClient {
   private ws: WebSocket | null = null;
   private relayUrl: string;
   private sessionId: string;
+  private role: "client" | "bridge";
   private state: ClientState = "disconnected";
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempts = 0;
   private outboundBuffer: RelayMessage[] = [];
   private messageHandlers: Set<MessageHandler> = new Set();
+  private stateHandlers: Set<StateHandler> = new Set();
 
-  constructor(relayUrl: string, sessionId: string) {
+  constructor(
+    relayUrl: string,
+    sessionId: string,
+    role: "client" | "bridge" = "client",
+  ) {
     this.relayUrl = relayUrl;
     this.sessionId = sessionId;
+    this.role = role;
   }
 
   getState(): ClientState {
@@ -36,15 +44,20 @@ export class SecureWebSocketClient {
     return () => { this.messageHandlers.delete(handler); };
   }
 
+  onStateChange(handler: StateHandler): () => void {
+    this.stateHandlers.add(handler);
+    return () => { this.stateHandlers.delete(handler); };
+  }
+
   connect(): void {
     if (this.ws) return;
-    this.state = "connecting";
+    this.setState("connecting");
 
-    const url = `${this.relayUrl}/${this.sessionId}`;
+    const url = `${this.relayUrl}/${this.sessionId}?role=${this.role}`;
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
-      this.state = "connected";
+      this.setState("connected");
       this.reconnectAttempts = 0;
       this.startHeartbeat();
       this.flushBuffer();
@@ -61,7 +74,7 @@ export class SecureWebSocketClient {
 
     this.ws.onclose = () => {
       const wasConnected = this.state === "connected";
-      this.state = "disconnected";
+      this.setState("disconnected");
       this.stopHeartbeat();
       this.ws = null;
       if (wasConnected) this.scheduleReconnect();
@@ -90,7 +103,7 @@ export class SecureWebSocketClient {
       this.ws.close(1000, "Client disconnect");
       this.ws = null;
     }
-    this.state = "disconnected";
+    this.setState("disconnected");
     this.outboundBuffer = [];
     this.reconnectAttempts = 0;
   }
@@ -123,5 +136,10 @@ export class SecureWebSocketClient {
       this.reconnectTimer = null;
       this.connect();
     }, delay);
+  }
+
+  private setState(state: ClientState): void {
+    this.state = state;
+    this.stateHandlers.forEach((handler) => handler(state));
   }
 }

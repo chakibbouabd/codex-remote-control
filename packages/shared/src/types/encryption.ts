@@ -57,6 +57,8 @@ export interface QrPairingData {
   bridgeId: string;
   /** Bridge Ed25519 public key (base64). */
   bridgePublicKey: string;
+  /** Bridge X25519 public key (base64url DER) for key exchange. */
+  bridgeKeyExchangePublicKey: string;
   /** Expiry timestamp (Unix ms). */
   expiresAt: number;
 }

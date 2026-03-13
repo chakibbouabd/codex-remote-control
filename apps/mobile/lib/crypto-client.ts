@@ -1,15 +1,15 @@
 /**
  * Mobile-side E2EE using WebCrypto API.
  *
- * In React Native, we use the WebCrypto API (backed by expo-crypto)
- * for all cryptographic operations. The shared package's Node.js crypto
- * functions are not available on mobile, so we implement mobile-specific
- * versions here.
+ * Keys are kept in the same DER formats used by the bridge:
+ * - public keys: SPKI
+ * - private keys: PKCS8
  *
- * Key format: DER-encoded (PKCS8 for private, SPKI for public), matching
- * the format used by the bridge's Node.js crypto implementation so both
- * sides can interoperate.
+ * The mobile app stores them as base64url strings so they are compatible
+ * with the relay protocol and the bridge's Node.js crypto implementation.
  */
+
+import type { EncryptedPayload } from "@crc/shared";
 
 export interface ClientKeyPair {
   ed25519PublicKey: string;
@@ -18,169 +18,198 @@ export interface ClientKeyPair {
   x25519PrivateKey: string;
 }
 
-/**
- * Generate identity keypairs for E2EE pairing using WebCrypto API.
- * On mobile, this uses the platform's native crypto implementation.
- *
- * Ed25519 for identity verification, X25519 for key exchange.
- * Keys are exported in DER format to match the bridge's Node.js format.
- */
+export interface DirectionalSessionKeys {
+  bridgeToClient: string;
+  clientToBridge: string;
+}
+
 export async function generateClientKeyPair(): Promise<ClientKeyPair> {
-  const ed25519 = await crypto.subtle.generateKey(
-    { name: "Ed25519" },
-    true,
-    ["sign", "verify"],
+  const ed25519 = assertCryptoKeyPair(
+    await crypto.subtle.generateKey({ name: "Ed25519" }, true, ["sign", "verify"]),
+  );
+  const x25519 = assertCryptoKeyPair(
+    await crypto.subtle.generateKey({ name: "X25519" }, true, ["deriveBits"]),
   );
 
-  const x25519 = await crypto.subtle.generateKey(
-    { name: "X25519" },
-    true,
-    ["deriveBits"],
-  );
-
-  const ed25519Public = await crypto.subtle.exportKey("spki", ed25519.publicKey);
-  const ed25519Private = await crypto.subtle.exportKey("pkcs8", ed25519.privateKey);
-  const x25519Public = await crypto.subtle.exportKey("spki", x25519.publicKey);
-  const x25519Private = await crypto.subtle.exportKey("pkcs8", x25519.privateKey);
+  const [ed25519Public, ed25519Private, x25519Public, x25519Private] = await Promise.all([
+    crypto.subtle.exportKey("spki", ed25519.publicKey),
+    crypto.subtle.exportKey("pkcs8", ed25519.privateKey),
+    crypto.subtle.exportKey("spki", x25519.publicKey),
+    crypto.subtle.exportKey("pkcs8", x25519.privateKey),
+  ]);
 
   return {
-    ed25519PublicKey: toBase64(ed25519Public),
-    ed25519PrivateKey: toBase64(ed25519Private),
-    x25519PublicKey: toBase64(x25519Public),
-    x25519PrivateKey: toBase64(x25519Private),
+    ed25519PublicKey: encodeBase64Url(ed25519Public),
+    ed25519PrivateKey: encodeBase64Url(ed25519Private),
+    x25519PublicKey: encodeBase64Url(x25519Public),
+    x25519PrivateKey: encodeBase64Url(x25519Private),
   };
 }
 
-/**
- * Encrypt a JSON payload using AES-256-GCM via WebCrypto API.
- * Falls back to expo-crypto polyfill if WebCrypto is not available.
- */
-export async function encryptPayload(plaintext: string, key: ArrayBuffer): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(plaintext);
-
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    key,
-    { name: "AES-GCM" },
-    false,
-    ["encrypt"],
-  );
-
-  const encrypted = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
-    cryptoKey,
-    data,
-  );
-
-  const combined = new Uint8Array(iv.length + encrypted.byteLength);
-  combined.set(iv);
-  combined.set(new Uint8Array(encrypted));
-
-  return btoa(String.fromCharCode(...combined));
-}
-
-/**
- * Decrypt an AES-256-GCM encrypted payload via WebCrypto API.
- */
-export async function decryptPayload(encoded: string, key: ArrayBuffer): Promise<string> {
-  const combined = Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0));
-  const iv = combined.slice(0, 12);
-  const ciphertext = combined.slice(12);
-
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    key,
-    { name: "AES-GCM" },
-    false,
-    ["decrypt"],
-  );
-
-  const decrypted = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv },
-    cryptoKey,
-    ciphertext,
-  );
-
-  const decoder = new TextDecoder();
-  return decoder.decode(decrypted);
-}
-
-/**
- * Derive a shared secret using X25519 ECDH via WebCrypto API.
- */
 export async function deriveSharedSecret(
-  myPrivateKeyBase64: string,
-  theirPublicKeyBase64: string,
+  myPrivateKeyBase64Url: string,
+  theirPublicKeyBase64Url: string,
 ): Promise<ArrayBuffer> {
-  const privateKeyData = Uint8Array.from(atob(myPrivateKeyBase64), (c) => c.charCodeAt(0));
+  const [privateKey, publicKey] = await Promise.all([
+    crypto.subtle.importKey(
+      "pkcs8",
+      decodeBase64Url(myPrivateKeyBase64Url),
+      { name: "X25519" },
+      false,
+      ["deriveBits"],
+    ),
+    crypto.subtle.importKey(
+      "spki",
+      decodeBase64Url(theirPublicKeyBase64Url),
+      { name: "X25519" },
+      false,
+      [],
+    ),
+  ]);
 
-  // Extract raw 32-byte X25519 private key from DER-encoded PKCS8
-  // PKCS8 DER for X25519: header is 48 bytes, key material is last 32
-  const rawPrivateKey = privateKeyData.slice(-32);
-
-  const publicKeyData = Uint8Array.from(atob(theirPublicKeyBase64), (c) => c.charCodeAt(0));
-  const rawPublicKey = publicKeyData.slice(-32);
-
-  const privateKey = await crypto.subtle.importKey(
-    "raw",
-    rawPrivateKey,
-    { name: "X25519" },
-    false,
-    ["deriveBits"],
-  );
-
-  const publicKey = await crypto.subtle.importKey(
-    "raw",
-    rawPublicKey,
-    { name: "X25519" },
-    true,
-    [],
-  );
-
-  const sharedBits = await crypto.subtle.deriveBits(
+  return crypto.subtle.deriveBits(
     { name: "X25519", public: publicKey },
     privateKey,
     256,
   );
-
-  return sharedBits;
 }
 
-/**
- * Derive AES keys from shared secret using HKDF-SHA256 via WebCrypto API.
- */
 export async function deriveAESKeys(
   sharedSecret: ArrayBuffer,
   sessionId: string,
 ): Promise<{ bridgeToClient: ArrayBuffer; clientToBridge: ArrayBuffer }> {
   const encoder = new TextEncoder();
-  const info = encoder.encode("crc-session-keys");
-  const salt = encoder.encode(sessionId);
-
-  const hkdfKey = await crypto.subtle.importKey(
-    "raw",
-    sharedSecret,
-    { name: "HKDF" },
-    false,
-    ["deriveBits"],
-  );
+  const hkdfKey = await crypto.subtle.importKey("raw", sharedSecret, "HKDF", false, ["deriveBits"]);
 
   const bits = await crypto.subtle.deriveBits(
-    { name: "HKDF", hash: "SHA-256", salt, info, length: 512 },
+    {
+      name: "HKDF",
+      hash: "SHA-256",
+      salt: encoder.encode(sessionId),
+      info: encoder.encode("crc-session-keys"),
+    },
     hkdfKey,
+    512,
   );
 
+  return splitDirectionalKeyBytes(bits);
+}
+
+export async function deriveDirectionalSessionKeys(
+  sharedSecret: ArrayBuffer,
+  sessionId: string,
+): Promise<DirectionalSessionKeys> {
+  const keys = await deriveAESKeys(sharedSecret, sessionId);
   return {
-    bridgeToClient: bits.slice(0, 32),
-    clientToBridge: bits.slice(32, 64),
+    bridgeToClient: encodeBase64Url(keys.bridgeToClient),
+    clientToBridge: encodeBase64Url(keys.clientToBridge),
   };
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────
+export async function encryptRelayPayload(
+  plaintext: string,
+  keyBase64Url: string,
+): Promise<EncryptedPayload> {
+  const encoder = new TextEncoder();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    decodeBase64Url(keyBase64Url),
+    { name: "AES-GCM" },
+    false,
+    ["encrypt"],
+  );
 
-function toBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  return btoa(String.fromCharCode(...bytes));
+  const encrypted = new Uint8Array(
+    await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      cryptoKey,
+      encoder.encode(plaintext),
+    ),
+  );
+
+  const tagLength = 16;
+  const ciphertext = encrypted.slice(0, encrypted.length - tagLength);
+  const tag = encrypted.slice(encrypted.length - tagLength);
+
+  return {
+    iv: encodeBase64Url(iv),
+    ciphertext: encodeBase64Url(ciphertext),
+    tag: encodeBase64Url(tag),
+  };
+}
+
+export async function decryptRelayPayload(
+  payload: EncryptedPayload,
+  keyBase64Url: string,
+): Promise<string> {
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    decodeBase64Url(keyBase64Url),
+    { name: "AES-GCM" },
+    false,
+    ["decrypt"],
+  );
+
+  const iv = new Uint8Array(decodeBase64Url(payload.iv));
+  const ciphertext = new Uint8Array(decodeBase64Url(payload.ciphertext));
+  const tag = new Uint8Array(decodeBase64Url(payload.tag));
+  const combined = new Uint8Array(ciphertext.length + tag.length);
+  combined.set(ciphertext);
+  combined.set(tag, ciphertext.length);
+
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    cryptoKey,
+    combined,
+  );
+
+  return new TextDecoder().decode(decrypted);
+}
+
+export async function encryptPayload(plaintext: string, key: ArrayBuffer): Promise<string> {
+  const payload = await encryptRelayPayload(plaintext, encodeBase64Url(key));
+  return JSON.stringify(payload);
+}
+
+export async function decryptPayload(encoded: string, key: ArrayBuffer): Promise<string> {
+  return decryptRelayPayload(JSON.parse(encoded) as EncryptedPayload, encodeBase64Url(key));
+}
+
+export function encodeBase64Url(input: ArrayBufferLike | Uint8Array): string {
+  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+export function decodeBase64Url(value: string): ArrayBuffer {
+  const padded = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+function splitDirectionalKeyBytes(bits: ArrayBuffer): {
+  bridgeToClient: ArrayBuffer;
+  clientToBridge: ArrayBuffer;
+} {
+  const bytes = new Uint8Array(bits);
+  return {
+    bridgeToClient: bytes.slice(0, 32).buffer,
+    clientToBridge: bytes.slice(32, 64).buffer,
+  };
+}
+
+function assertCryptoKeyPair(value: CryptoKeyPair | CryptoKey): CryptoKeyPair {
+  if ("publicKey" in value && "privateKey" in value) {
+    return value;
+  }
+
+  throw new Error("Expected a CryptoKeyPair");
 }

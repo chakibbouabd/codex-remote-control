@@ -61,6 +61,7 @@ describe("SecureWebSocketClient", () => {
     expect(client.getState()).toBe("connecting");
 
     const ws = getWS(client);
+    expect(ws.url).toBe("wss://relay.example.com/abc?role=client");
     ws.readyState = MockWebSocket.OPEN;
     ws.onopen?.();
     expect(client.getState()).toBe("connected");
@@ -151,6 +152,20 @@ describe("SecureWebSocketClient", () => {
     ws.onmessage?.({ data: JSON.stringify({ type: "heartbeat", payload: { timestamp: 1 } }) });
 
     expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("notifies state change subscribers", () => {
+    const client = new SecureWebSocketClient("wss://relay.example.com", "abc");
+    const states: string[] = [];
+    client.onStateChange((state) => states.push(state));
+
+    client.connect();
+    const ws = getWS(client);
+    ws.readyState = MockWebSocket.OPEN;
+    ws.onopen?.();
+    ws.onclose?.();
+
+    expect(states).toEqual(["connecting", "connected", "disconnected"]);
   });
 
   it("ignores malformed messages", () => {

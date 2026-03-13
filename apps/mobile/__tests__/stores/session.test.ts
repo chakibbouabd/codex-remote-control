@@ -8,6 +8,7 @@ beforeEach(() => {
     sessionId: null,
     bridgeId: null,
     status: "disconnected",
+    encryptionReady: false,
     error: null,
   });
 });
@@ -20,6 +21,7 @@ describe("useSessionStore", () => {
     expect(state.sessionId).toBeNull();
     expect(state.bridgeId).toBeNull();
     expect(state.status).toBe("disconnected");
+    expect(state.encryptionReady).toBe(false);
     expect(state.error).toBeNull();
   });
 
@@ -49,7 +51,16 @@ describe("useSessionStore", () => {
     expect(state.sessionId).toBe("abc123");
     expect(state.bridgeId).toBe("mac-001");
     expect(state.status).toBe("connected");
+    expect(state.encryptionReady).toBe(false);
     expect(state.error).toBeNull();
+  });
+
+  it("setEncryptionReady updates the encryption state", () => {
+    act(() => {
+      useSessionStore.getState().setEncryptionReady(true);
+    });
+
+    expect(useSessionStore.getState().encryptionReady).toBe(true);
   });
 
   it("setError sets error and sets status to disconnected", () => {
@@ -86,6 +97,7 @@ describe("useSessionStore", () => {
     expect(state.sessionId).toBeNull();
     expect(state.bridgeId).toBeNull();
     expect(state.status).toBe("disconnected");
+    expect(state.encryptionReady).toBe(false);
     expect(state.error).toBeNull();
   });
 

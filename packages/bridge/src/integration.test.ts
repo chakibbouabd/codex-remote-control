@@ -227,6 +227,7 @@ describe("Bridge integration", () => {
       expect(info.qrData.relay).toContain(`localhost:${relayPort}`);
       expect(info.qrData.bridgeId).toBeTruthy();
       expect(info.qrData.bridgePublicKey).toBeTruthy();
+      expect(info.qrData.bridgeKeyExchangePublicKey).toBeTruthy();
       expect(info.bridgeIdentityKeys.ed25519PublicKey).toBeTruthy();
       expect(info.bridgeIdentityKeys.x25519PublicKey).toBeTruthy();
       expect(info.qrData.expiresAt).toBeGreaterThan(Date.now());

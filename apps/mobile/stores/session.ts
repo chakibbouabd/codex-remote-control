@@ -30,6 +30,7 @@ interface SessionState {
   sessionId: string | null;
   bridgeId: string | null;
   status: ConnectionStatus;
+  encryptionReady: boolean;
   error: string | null;
   /** @param status - The new connection status. */
   setStatus: (status: ConnectionStatus) => void;
@@ -37,6 +38,7 @@ interface SessionState {
   /** @param sessionId - The session identifier. */
   /** @param bridgeId - The bridge identifier. */
   setPaired: (relayUrl: string, sessionId: string, bridgeId: string) => void;
+  setEncryptionReady: (ready: boolean) => void;
   /** @param error - The error message to display. */
   setError: (error: string) => void;
   disconnect: () => void;
@@ -48,11 +50,21 @@ export const useSessionStore = create<SessionState>((set) => ({
   sessionId: null,
   bridgeId: null,
   status: "disconnected",
+  encryptionReady: false,
   error: null,
   setStatus: (status) => set({ status, error: null }),
   setPaired: (relayUrl, sessionId, bridgeId) =>
     set({ isPaired: true, relayUrl, sessionId, bridgeId, status: "connected", error: null }),
+  setEncryptionReady: (encryptionReady) => set({ encryptionReady }),
   setError: (error) => set({ error, status: "disconnected" }),
   disconnect: () =>
-    set({ isPaired: false, relayUrl: null, sessionId: null, bridgeId: null, status: "disconnected", error: null }),
+    set({
+      isPaired: false,
+      relayUrl: null,
+      sessionId: null,
+      bridgeId: null,
+      status: "disconnected",
+      encryptionReady: false,
+      error: null,
+    }),
 }));

@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, Switch, TouchableOpacity, ScrollView } from "react-native";
 import { useState } from "react";
 import { Colors, BorderRadius, Spacing, FontSize } from "@/constants/theme";
+import { relaySessionManager } from "@/lib/relay-session";
 import { useSessionStore } from "@/stores/session";
 
 type ApprovalPolicy = "on-request" | "never";
@@ -13,15 +14,16 @@ export default function SettingsScreen() {
   const [effort, setEffort] = useState("Auto");
   const [approvalPolicy, setApprovalPolicy] = useState<ApprovalPolicy>("on-request");
   const [speedMode, setSpeedMode] = useState(false);
-  const { bridgeId, disconnect, isPaired, relayUrl, sessionId, status } = useSessionStore();
+  const { bridgeId, encryptionReady, isPaired, relayUrl, sessionId, status } = useSessionStore();
 
   const connectionStatus = isPaired ? status : "disconnected";
-  const encryptionStatus =
-    connectionStatus === "connected"
+  const encryptionStatus = encryptionReady
+    ? connectionStatus === "connected"
       ? "E2EE Active"
-      : isPaired
-        ? "Handshake Pending"
-        : "Not Paired";
+      : "Session Keys Ready"
+    : isPaired
+      ? "Handshake Pending"
+      : "Not Paired";
 
   return (
     <ScrollView style={styles.container}>
@@ -76,7 +78,7 @@ export default function SettingsScreen() {
           <InfoRow label="Protocol" value="CRC v1" />
         </Section>
 
-        <TouchableOpacity style={styles.disconnectButton} onPress={disconnect}>
+        <TouchableOpacity style={styles.disconnectButton} onPress={() => relaySessionManager.disconnect()}>
           <Text style={styles.disconnectText}>Disconnect</Text>
         </TouchableOpacity>
       </View>

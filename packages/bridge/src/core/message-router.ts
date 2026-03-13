@@ -53,6 +53,7 @@ export interface PairingInfo {
     sessionId: string;
     bridgeId: string;
     bridgePublicKey: string;
+    bridgeKeyExchangePublicKey: string;
     expiresAt: number;
   };
   /** Bridge identity public keys (for verification). */
@@ -109,6 +110,7 @@ export class MessageRouter extends EventEmitter {
       sessionId: this.sessionId,
       bridgeId: generateId(12),
       bridgePublicKey: serializedEd.publicKey,
+      bridgeKeyExchangePublicKey: serializedX.publicKey,
       expiresAt: now() + QR_EXPIRY_MS,
     };
 
@@ -159,6 +161,9 @@ export class MessageRouter extends EventEmitter {
     // Wire relay → agent (mobile → bridge → agent)
     this.relayClient.on("message", (msg) => {
       this.handleRelayMessage(msg);
+    });
+    this.relayClient.on("pairConfirm", (payload) => {
+      this.emit("pairConfirm", payload);
     });
 
     // Wire agent → relay (agent → bridge → mobile)

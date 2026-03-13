@@ -65,7 +65,7 @@ export function registerStartCommand(program: Command): void {
       // Display pairing details
       const expiryMinutes = Math.round(QR_EXPIRY_MS / 60000);
       console.log("\nQR expires in " + expiryMinutes + " minutes");
-      console.log("Relay: " + options.relay);
+      console.log("Relay: " + (options.relay ?? DEFAULT_RELAY_URL));
       console.log("\nBridge is running. Waiting for mobile to pair...\n");
 
       // Handle pairing

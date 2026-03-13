@@ -51,9 +51,36 @@ describe("MessageRouter", () => {
     expect(info.qrData.relay).toBe("ws://localhost:3000");
     expect(info.qrData.sessionId).toBe(router.getSessionId());
     expect(info.qrData.bridgeId).toBeTruthy();
+    expect(info.qrData.bridgeKeyExchangePublicKey).toBeTruthy();
     expect(info.qrData.expiresAt).toBeGreaterThan(Date.now());
     expect(info.bridgeIdentityKeys.ed25519PublicKey).toBeTruthy();
     expect(info.bridgeIdentityKeys.x25519PublicKey).toBeTruthy();
+  });
+
+  it("re-emits pairConfirm from the relay client", async () => {
+    const agent = createMockAgent();
+    const router = new MessageRouter(agent, {
+      relayUrl: "ws://localhost:3000",
+      cwd: "/tmp",
+    });
+    const relayClient = router.getRelayClient();
+    relayClient.connect = vi.fn();
+
+    const pairConfirm = vi.fn();
+    router.on("pairConfirm", pairConfirm);
+
+    await router.start();
+    relayClient.emit("pairConfirm", {
+      clientId: "client-1",
+      clientPublicKey: "ed25519",
+      clientEphemeralKey: "x25519",
+    });
+
+    expect(pairConfirm).toHaveBeenCalledWith({
+      clientId: "client-1",
+      clientPublicKey: "ed25519",
+      clientEphemeralKey: "x25519",
+    });
   });
 
   it("reports not connected initially", () => {
