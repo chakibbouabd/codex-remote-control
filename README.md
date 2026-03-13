@@ -20,7 +20,7 @@ CRC is a local-first system that lets you control AI coding agents (starting wit
 - **Queue & steer** — Queue follow-up prompts, inject mid-turn to redirect
 - **Real-time streaming** — See assistant responses as they arrive
 - **Code review** — Diff viewer, change summaries, per-file approval
-- **Cross-platform** — iOS, Android, and web from one Expo codebase
+- **Cross-platform codebase** — Expo app targeting iOS and Android today, with web support not yet wired locally
 - **Multi-agent ready** — Adapter pattern for Codex, Aider, and more
 
 ## Architecture
@@ -68,13 +68,28 @@ codex-remote-control/
 
 ## Quick Start
 
+This is the intended product flow. For the current repo-local status, see
+`Development -> Run Locally` below.
+
+### Prerequisites
+
+- Node.js 20+
+- `pnpm` 9.15.0+
+- OpenAI Codex CLI installed and available as `codex`
+
+```bash
+codex --version
+pnpm --version
+node --version
+```
+
 ### 1. Start the relay server
 
 Self-host the relay or use the default:
 
 ```bash
 npx @crc/relay
-# crc-relay listening on 0.0.0.0:3000
+# crc-relay listening on 0.0.0.0:3773
 ```
 
 ### 2. Start the bridge on your Mac
@@ -84,13 +99,14 @@ npm install -g codex-remote-control
 crc start
 ```
 
-This spawns the Codex agent, connects to the relay, and displays a QR code.
+This is intended to spawn the Codex agent, connect to the relay, and display a
+QR code.
 
 ### 3. Pair your phone
 
 1. Install the CRC mobile app
 2. Scan the QR code displayed in your terminal
-3. E2E encryption is established automatically
+3. Complete pairing in the app
 
 ### 4. Code from your phone
 
@@ -131,6 +147,68 @@ pnpm install
 pnpm build
 pnpm test
 ```
+
+### Run Locally
+
+Use three terminals.
+
+1. Build the workspace once:
+
+```bash
+pnpm install
+pnpm build
+```
+
+2. Start the relay server:
+
+```bash
+pnpm --filter @crc/relay start
+```
+
+This listens on `0.0.0.0:3773` by default.
+
+3. Start the bridge against your local relay:
+
+```bash
+CRC_RELAY=ws://127.0.0.1:3773 pnpm --filter @crc/bridge exec node dist/cli/index.js start /absolute/path/to/workspace
+```
+
+If you are already inside the repo you want to control, `.` is enough:
+
+```bash
+CRC_RELAY=ws://127.0.0.1:3773 pnpm --filter @crc/bridge exec node dist/cli/index.js start .
+```
+
+The bridge prints a session code and QR payload, but see the limitation below
+about the current Codex CLI transport mismatch.
+
+4. Start the Expo mobile app:
+
+```bash
+pnpm --filter @crc/mobile start
+```
+
+Then open it with one of:
+
+```bash
+pnpm --filter @crc/mobile ios
+pnpm --filter @crc/mobile android
+```
+
+### Known Local Limitations
+
+- The relay server starts correctly from this repo.
+- The bridge CLI starts, prints the workspace and QR payload, then times out with
+  `codex-cli 0.114.0` because `packages/bridge/src/agent/codex-adapter.ts`
+  expects `codex app-server` to emit a `ws://...` URL on stdout, while the
+  current Codex CLI defaults to `stdio://` unless started with `--listen`.
+- The Expo app starts locally, but the pairing screens are still placeholders:
+  `apps/mobile/app/(auth)/connect.tsx` and `apps/mobile/app/(auth)/pair.tsx`
+  do not complete a real bridge handshake yet.
+- Expo web is not currently ready in this repo. `expo start --web` fails because
+  `react-native-web` is not installed.
+- The bridge defaults to the hosted relay unless you set `CRC_RELAY`, so use the
+  local `ws://127.0.0.1:3773` override when testing locally.
 
 ### Scripts
 
