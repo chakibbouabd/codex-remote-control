@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity } from "r
 import { useState } from "react";
 import { useLocalSearchParams } from "expo-router";
 import { useConversationStore } from "@/stores/conversation";
+import type { ConversationMessage } from "@/stores/conversation";
 import { MessageBubble } from "@/components/conversation/MessageBubble";
 import { ApprovalCard } from "@/components/conversation/ApprovalCard";
 import { Colors, Spacing, FontSize, BorderRadius } from "@/constants/theme";
@@ -59,7 +60,7 @@ export default function ThreadScreen() {
     setActiveTurnId(null);
   };
 
-  const renderMessage = ({ item }: { item: any }) => (
+  const renderMessage = ({ item }: { item: ConversationMessage }) => (
     <MessageBubble message={item} />
   );
 

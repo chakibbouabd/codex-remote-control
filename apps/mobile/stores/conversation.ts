@@ -37,6 +37,8 @@ interface ConversationState {
   setStreaming: (streaming: boolean) => void;
   /** Set or clear the pending approval request. */
   setPendingApproval: (approval: { id: string; command: string } | null) => void;
+  /** Respond to a pending approval (clears it; in future will send to bridge). */
+  respondToApproval: (response: { id: string; command: string }) => void;
   /** Set or clear the active conversation turn ID. */
   setActiveTurnId: (id: string | null) => void;
   /** Clear all messages and reset streaming state. */
@@ -59,6 +61,7 @@ export const useConversationStore = create<ConversationState>((set) => ({
     })),
   setStreaming: (streaming) => set({ isStreaming: streaming }),
   setPendingApproval: (approval) => set({ pendingApproval: approval }),
+  respondToApproval: (_response) => set({ pendingApproval: null }),
   setActiveTurnId: (id) => set({ activeTurnId: id }),
   clearMessages: () =>
     set({ messages: [], isStreaming: false, activeTurnId: null }),
