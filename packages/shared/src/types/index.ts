@@ -51,3 +51,14 @@ export type {
 } from "./codex.js";
 
 export { CodexMethods } from "./codex.js";
+
+export type {
+  KeyPair,
+  IdentityKeys,
+  SessionKeys,
+  EncryptionState,
+  EncryptedEnvelope,
+  QrPairingData,
+} from "./encryption.js";
+
+export { PAIRING_PROTOCOL_VERSION } from "./encryption.js";
