@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "CRC",
+    "slug": "crc-remote-control",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "crc",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow CRC to access your camera to scan QR codes for pairing."
+        }
+      ],
+      "expo-secure-store",
+      "expo-sqlite"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.codexremotecontrol.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#111111"
+      }
+    }
+  }
+}
