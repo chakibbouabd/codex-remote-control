@@ -18,6 +18,7 @@ import type { AgentAdapter, AgentConfig } from "./types.js";
 import { AgentStatus } from "./types.js";
 
 const CODEX_BIN = "codex";
+const CODEX_APP_SERVER_LISTEN_URL = "ws://127.0.0.1:0";
 const WS_URL_REGEX = /ws:\/\/[^\s]+/;
 
 /**
@@ -56,32 +57,37 @@ export class CodexAdapter implements AgentAdapter {
     this.config = config;
     this.status = AgentStatus.Starting;
 
-    // 1. Spawn `codex app-server`
-    this.process = spawn(CODEX_BIN, ["app-server"], {
+    // 1. Spawn `codex app-server` with an explicit WebSocket listener.
+    // Recent Codex CLI builds default to stdio transport unless `--listen` is set.
+    this.process = spawn(
+      CODEX_BIN,
+      ["app-server", "--listen", CODEX_APP_SERVER_LISTEN_URL],
+      {
       cwd: config.cwd,
       stdio: ["pipe", "pipe", "pipe"],
       env: { ...process.env },
-    });
+      },
+    );
 
-    // 2. Parse stdout until we see a ws:// URL
+    // 2. Parse startup logs until we see a ws:// URL.
+    // Codex app-server writes the WebSocket listener banner to stderr.
     const wsUrl = await new Promise<string>((resolve, reject) => {
       const timeout = setTimeout(
         () => reject(new Error("Timeout waiting for Codex app-server to start")),
         15_000,
       );
 
-      this.process!.stdout!.on("data", (data: Buffer) => {
+      const parseWsUrl = (data: Buffer) => {
         const text = data.toString();
         const match = text.match(WS_URL_REGEX);
         if (match) {
           clearTimeout(timeout);
           resolve(match[0]);
         }
-      });
+      };
 
-      this.process!.stderr!.on("data", (_data: Buffer) => {
-        // Log but don't fail — stderr may contain informational output
-      });
+      this.process!.stdout!.on("data", parseWsUrl);
+      this.process!.stderr!.on("data", parseWsUrl);
 
       this.process!.on("error", (err) => {
         clearTimeout(timeout);
