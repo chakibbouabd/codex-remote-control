@@ -9,14 +9,36 @@ import {
   Platform,
 } from "react-native";
 import { router } from "expo-router";
+import { usePairing } from "@/hooks/usePairing";
+import { normalizeRelayUrl, normalizeSessionCode } from "@/lib/pairing";
 
 export default function ConnectScreen() {
   const [relayUrl, setRelayUrl] = useState("wss://relay.codex-remote.control");
   const [sessionCode, setSessionCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { pairManually } = usePairing();
 
-  const handleConnect = () => {
-    // TODO: Implement actual connection in later commits
-    router.replace("/(main)");
+  const handleConnect = async () => {
+    const normalizedRelayUrl = normalizeRelayUrl(relayUrl);
+    const normalizedSessionCode = normalizeSessionCode(sessionCode);
+
+    if (!normalizedRelayUrl || normalizedSessionCode.length !== 6) {
+      setError("Enter a relay URL and a 6-character session code.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      await pairManually(normalizedRelayUrl, normalizedSessionCode);
+      router.replace("/(main)");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to pair with bridge.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -48,7 +70,7 @@ export default function ConnectScreen() {
           <TextInput
             style={styles.input}
             value={sessionCode}
-            onChangeText={setSessionCode}
+            onChangeText={(value) => setSessionCode(normalizeSessionCode(value))}
             autoCapitalize="characters"
             autoCorrect={false}
             placeholder="ABC123"
@@ -57,12 +79,14 @@ export default function ConnectScreen() {
           />
         </View>
 
+        {error && <Text style={styles.errorText}>{error}</Text>}
+
         <TouchableOpacity
-          style={[styles.button, sessionCode.length < 3 && styles.buttonDisabled]}
+          style={[styles.button, (sessionCode.length !== 6 || isSubmitting) && styles.buttonDisabled]}
           onPress={handleConnect}
-          disabled={sessionCode.length < 3}
+          disabled={sessionCode.length !== 6 || isSubmitting}
         >
-          <Text style={styles.buttonText}>Connect</Text>
+          <Text style={styles.buttonText}>{isSubmitting ? "Connecting..." : "Connect"}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -95,6 +119,7 @@ const styles = StyleSheet.create({
   button: { backgroundColor: "#2563eb", borderRadius: 8, padding: 16, alignItems: "center", marginTop: 8 },
   buttonDisabled: { opacity: 0.5 },
   buttonText: { color: "#ffffff", fontSize: 16, fontWeight: "600" },
+  errorText: { color: "#ef4444", fontSize: 14, marginBottom: 8 },
   linkButton: { marginTop: 16, alignItems: "center" },
   linkText: { color: "#2563eb", fontSize: 14 },
 });

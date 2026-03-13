@@ -1,10 +1,28 @@
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, TextInput } from "react-native";
 import { router } from "expo-router";
+import { usePairing } from "@/hooks/usePairing";
+import { parsePairingQrPayload } from "@/lib/pairing";
 
 export default function PairScreen() {
-  // TODO: Implement actual QR scanning with expo-camera in later commits
-  const handleSimulatePair = () => {
-    router.replace("/(main)");
+  const [qrPayload, setQrPayload] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { pairWithQR } = usePairing();
+
+  const handlePairFromPayload = async () => {
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const data = parsePairingQrPayload(qrPayload);
+      await pairWithQR(data);
+      router.replace("/(main)");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to parse QR payload.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -17,12 +35,29 @@ export default function PairScreen() {
 
         <View style={styles.scannerPlaceholder}>
           <Text style={styles.scannerIcon}>📷</Text>
-          <Text style={styles.scannerText}>Camera will open here</Text>
-          <Text style={styles.scannerHint}>QR scanner requires camera permissions</Text>
+          <Text style={styles.scannerText}>Camera scanning is not wired yet</Text>
+          <Text style={styles.scannerHint}>Paste the QR payload from the bridge to continue locally</Text>
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleSimulatePair}>
-          <Text style={styles.buttonText}>Simulate Pairing (Dev)</Text>
+        <TextInput
+          style={styles.payloadInput}
+          value={qrPayload}
+          onChangeText={setQrPayload}
+          autoCapitalize="none"
+          autoCorrect={false}
+          multiline
+          placeholder='{"v":1,"relay":"ws://127.0.0.1:3773",...}'
+          placeholderTextColor="#666666"
+        />
+
+        {error && <Text style={styles.errorText}>{error}</Text>}
+
+        <TouchableOpacity
+          style={[styles.button, (!qrPayload.trim() || isSubmitting) && styles.buttonDisabled]}
+          onPress={handlePairFromPayload}
+          disabled={!qrPayload.trim() || isSubmitting}
+        >
+          <Text style={styles.buttonText}>{isSubmitting ? "Pairing..." : "Pair From QR Payload"}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.linkButton} onPress={() => router.back()}>
@@ -46,8 +81,23 @@ const styles = StyleSheet.create({
   scannerIcon: { fontSize: 48, marginBottom: 12 },
   scannerText: { color: "#ffffff", fontSize: 16, fontWeight: "600" },
   scannerHint: { color: "#666666", fontSize: 14, marginTop: 8 },
+  payloadInput: {
+    width: "100%",
+    minHeight: 120,
+    backgroundColor: "#1a1a1a",
+    borderWidth: 1,
+    borderColor: "#333333",
+    borderRadius: 8,
+    padding: 14,
+    fontSize: 14,
+    color: "#ffffff",
+    textAlignVertical: "top",
+    marginBottom: 12,
+  },
   button: { backgroundColor: "#2563eb", borderRadius: 8, padding: 16, alignItems: "center", width: "100%" },
+  buttonDisabled: { opacity: 0.5 },
   buttonText: { color: "#ffffff", fontSize: 16, fontWeight: "600" },
+  errorText: { color: "#ef4444", fontSize: 14, marginBottom: 8, alignSelf: "flex-start" },
   linkButton: { marginTop: 16, alignItems: "center" },
   linkText: { color: "#2563eb", fontSize: 14 },
 });

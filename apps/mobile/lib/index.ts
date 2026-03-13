@@ -18,3 +18,9 @@ export {
   deriveAESKeys,
 } from "./crypto-client";
 export type { ClientKeyPair } from "./crypto-client";
+export {
+  normalizeRelayUrl,
+  normalizeSessionCode,
+  parsePairingQrPayload,
+} from "./pairing";
+export type { PairingQrData } from "./pairing";
