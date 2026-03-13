@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 export interface ConversationMessage {
   id: string;
+  threadId: string;
   role: "user" | "assistant" | "system";
   content: string;
   timestamp: number;
@@ -28,13 +29,17 @@ export const useConversationStore = create<ConversationState>((set) => ({
   pendingApproval: null,
   activeTurnId: null,
   setMessages: (messages) => set({ messages }),
-  addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
+  addMessage: (message) =>
+    set((state) => ({ messages: [...state.messages, message] })),
   updateMessage: (id, updates) =>
     set((state) => ({
-      messages: state.messages.map((m) => (m.id === id ? { ...m, ...updates } : m)),
+      messages: state.messages.map((m) =>
+        m.id === id ? { ...m, ...updates } : m,
+      ),
     })),
   setStreaming: (streaming) => set({ isStreaming: streaming }),
   setPendingApproval: (approval) => set({ pendingApproval: approval }),
   setActiveTurnId: (id) => set({ activeTurnId: id }),
-  clearMessages: () => set({ messages: [], isStreaming: false, activeTurnId: null }),
+  clearMessages: () =>
+    set({ messages: [], isStreaming: false, activeTurnId: null }),
 }));
